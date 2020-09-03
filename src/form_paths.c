@@ -1,34 +1,18 @@
-#include "../includes/lem-in.h"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   form_paths.c                                       :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: eshor <eshor@student.42.fr>                +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2020/08/10 13:07:32 by eshor             #+#    #+#             */
+/*   Updated: 2020/08/10 16:52:58 by eshor            ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
+#include "../includes/lem_in.h"
 
-t_room *get_prev_room(t_lem_in *lem_in, t_room *room)
-{
-	int i;
-	t_room *new_head;
-	int check;
-
-	i = 0;
-	check = -1;
-	while (i < lem_in->room_num - 1)
-	{
-		if (lem_in->link_arr[room->num][i] == 3 && room->level > lem_in->rooms[i]->level)
-		{
-//			ft_printf("prev room: %s\n", lem_in->rooms[i]->name);
-			check = 1;
-			new_head = lem_in->rooms[i];
-			new_head->next = room;
-			lem_in->link_arr[new_head->num][room->num] = 1;
-			lem_in->link_arr[room->num][new_head->num] = 2;
-		}
-		i++;
-	}
-	if (check == -1)
-		return (NULL);
-	return (new_head);
-}
-
-
-t_path *create_path(t_room *head, int len)
+t_path	*create_path(t_room *head, int len)
 {
 	t_path *path;
 
@@ -40,12 +24,14 @@ t_path *create_path(t_room *head, int len)
 	return (path);
 }
 
-int 	does_path_end(t_lem_in *lem_in, int room_id)
+int		does_path_end(t_lem_in *lem_in, int room_id)
 {
 	int i;
 	int len;
 
 	len = 0;
+	if (room_id == lem_in->room_num - 1)
+		return (1);
 	while (1)
 	{
 		i = 1;
@@ -55,7 +41,7 @@ int 	does_path_end(t_lem_in *lem_in, int room_id)
 			{
 				len++;
 				if (i == lem_in->room_num - 1)
-					return (len + 1);
+					return ((len + 1) / 2);
 				room_id = i;
 				break ;
 			}
@@ -66,11 +52,11 @@ int 	does_path_end(t_lem_in *lem_in, int room_id)
 	}
 }
 
-void set_next_prev(t_lem_in *lem_in, int room_id)
+void	set_next_prev(t_lem_in *lem_in, int room_id)
 {
 	int i;
 
-	lem_in->rooms[room_id]->prev = NULL;
+	lem_in->rooms[room_id]->temp_prev = NULL;
 	while (room_id != lem_in->room_num - 1)
 	{
 		i = 1;
@@ -78,18 +64,18 @@ void set_next_prev(t_lem_in *lem_in, int room_id)
 		{
 			if (lem_in->link_arr[room_id][i] == 1)
 			{
-				lem_in->rooms[room_id]->next = lem_in->rooms[i];
+				lem_in->rooms[room_id]->temp_next = lem_in->rooms[i];
 				if (i != lem_in->room_num - 1)
-					lem_in->rooms[i]->prev = lem_in->rooms[room_id];
+					lem_in->rooms[i]->temp_prev = lem_in->rooms[room_id];
 				room_id = i;
-				break;
+				break ;
 			}
 			i++;
 		}
 	}
 }
 
-int	get_num_paths(t_lem_in *lem_in)
+int		get_num_paths(t_lem_in *lem_in)
 {
 	int num;
 	int i;
@@ -98,37 +84,39 @@ int	get_num_paths(t_lem_in *lem_in)
 	i = 0;
 	while (i < lem_in->room_num)
 	{
-		if (lem_in->link_arr[0][i] == 1 && (i == lem_in->room_num - 1 || does_path_end(lem_in, i) != ERROR))
+		if (lem_in->link_arr[0][i] == 1 &&
+		(i == lem_in->room_num - 1 || does_path_end(lem_in, i) != ERROR))
 			num++;
 		i++;
 	}
-	return(num);
+	return (num);
 }
 
-int pathfinder(t_lem_in *lem_in)
+t_path	**pathfinder(t_lem_in *lem_in)
 {
-	int i;
-	int len;
-	t_path *one_path;
+	int		i;
+	int		len;
+	t_path	*one_path;
 
 	lem_in->path_num = get_num_paths(lem_in);
-	lem_in->paths = (t_path**)malloc(sizeof(t_path*) * lem_in->path_num);
-	if (!lem_in->paths)
-		return (ERROR);
-	i = 1;
+	if (!(lem_in->paths = (t_path**)malloc(sizeof(t_path*) * lem_in->path_num)))
+		return (NULL);
+	i = 0;
 	lem_in->path_num = 0;
-	while (i < lem_in->room_num)
+	while (++i < lem_in->room_num)
 	{
-		if (lem_in->link_arr[0][i] == 1 && (len = does_path_end(lem_in, i)) != ERROR)
+		if (lem_in->link_arr[0][i] == 1 &&
+		(len = does_path_end(lem_in, i)) != ERROR)
 		{
 			one_path = create_path(lem_in->rooms[i], len);
 			if (!one_path)
-				return (ERROR);
+				return (NULL);
 			set_next_prev(lem_in, i);
 			lem_in->paths[lem_in->path_num] = one_path;
 			lem_in->path_num++;
 		}
-		i++;
 	}
-	return (0);
+	sort_paths(lem_in->paths, lem_in->path_num - 1);
+	define_comp_num(lem_in->paths, lem_in->path_num);
+	return (lem_in->paths);
 }
